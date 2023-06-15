@@ -11,13 +11,8 @@ For this project I will attempt to predict the winner of the 2023 Rugby World Cu
 In order to conduct my analysis, I need to import the data set from excel format. This data set includes all matches which have been played since 1984, 3 years before the start of the first Rugby World Cup. 
 
 ```{r}
-install.packages(fmxdat)
-fmxdat::makeproject("2023 Rugby World Cup Predictor")
-```
-
-```{r}
 library(readxl)
-df <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\Rugby_matches_data_1984-2023.xlsx")
+df <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\Rugby_matches_data_1984-2023.xlsx")
 ```
 
 I am going to do is generate 3 new columns, in order to identify the winner of each game, the points difference of each game and the winner of the World Cup.
@@ -32,7 +27,7 @@ subtract <- function(home_score, away_score) {
 df$points_diff = subtract(df$home_score, df$away_score)
 ```
 
-Next is a vraible for the winner of the game
+Next is a variable for the winner of the game
 
 ```{r}
 #Winner of game 
