@@ -1,7 +1,7 @@
 ---
 title: "2023 Rugby World Predictor"
 author: "Peter Meihuizen"
-date: "2023-05-24"
+date: "2023-06-23"
 output: html_document
 ---
 Introduction:
@@ -12,27 +12,26 @@ In order to conduct my analysis, I need to import the data set from excel format
 
 ```{r}
 library(readxl)
-df <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\Rugby_matches_data_1984-2023.xlsx")
+df <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\Data\\Rugby_matches_data_1984-2023.xlsx")
 ```
 
-I am going to do is generate 3 new columns, in order to identify the winner of each game, the points difference of each game and the winner of the World Cup.
+I am going to do is generate 4 new columns, in order to identify the winner of each game, the points difference of each game and the winner of the World Cup. First I create a function to generate the points difference between the home_team and away_team.
 
 ```{r}
 # Points difference
 library(tidyverse)
-subtract <- function(home_score, away_score) {
-  points_diff <- home_score - away_score
-  return(points_diff)
-}
-df$points_diff = subtract(df$home_score, df$away_score)
+
+df <- df %>% 
+  mutate(points_diff = subtract(., "home_score", "away_score"))
 ```
 
-Next is a variable for the winner of the game
+Next is a variable for the winner and loser of the game.
 
 ```{r}
 #Winner of game 
-df$Winner <- ifelse(df$points_diff > 0, df$home_team,
-                    ifelse(df$points_diff < 0, df$away_team, "."))
+df <- df %>% 
+  mutate(Winner = ifelse(points_diff > 0, home_team, ifelse(points_diff < 0, away_team, ".")),
+         Loser = ifelse(points_diff < 0, home_team, ifelse(points_diff > 0, away_team, ".")))
 ```
 
 Then a variable which indicates the winner of the World Cup
@@ -40,33 +39,52 @@ Then a variable which indicates the winner of the World Cup
 ```{r}
 # Winner of the World Cup
 # Create a new column WC_winner
-df$WC_winner <- NA
 
-# Iterate over the rows
-for (i in 1:(nrow(df) - 1)) {
-  current_row <- df[i, ]
-  next_row <- df[i + 1, ]
-  
-  if (current_row$world_cup & !next_row$world_cup) {
-    df$WC_winner[i] <- current_row$Winner
+df <- df %>%
+  mutate(WC_winner = NA) %>%
+  {
+    for (i in 1:(nrow(.) - 1)) {
+      current_row <- .[i, ]
+      next_row <- .[i + 1, ]
+      
+      if (current_row$world_cup & !next_row$world_cup) {
+        .$WC_winner[i] <- current_row$Winner
+      }
+    }
+    .
   }
-}
+
 ```
 
 I can now see the winners of each world cup up to date
 
 ```{r}
-WC_Winners <- subset(df, !is.na(WC_winner), select = c(competition, WC_winner))
+WC_Winners <- df %>%
+  filter(!is.na(WC_winner)) %>%
+  select(competition, WC_winner) %>%
+  tibble()
+
 
 # Print the summary
-print(WC_Winners)
+WC_Winners
 ```
+
+Ok now I want to see what the win-loss percentage was for every world cup winning team in the 4 years leading up to their respective world cup victory. In order to do this I will look at the number of wins over the combined number of wins and losses over each 4 year period preceding the beginning of the world cup. In 
+
+```{r}
+
+```
+
+
+
+
+
 
 Next I want to include the World rankings of each team which have been collected since the conclusion of the 2003 Rugby World Cup. I need to web scrape this information.
 
-#Scraping the data
+
 ```{r}
-install.packages("rvest")
+#Scraping the data
 library(rvest)
 url <- "https://commons.wikimedia.org/wiki/Data:Men%27s_World_Rugby_rankings.tab"
 page <- read_html(url)
