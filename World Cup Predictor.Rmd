@@ -166,16 +166,22 @@ df$date <- as.Date(df$date, format = "%Y-%m-%d")
 rankings$date <- as.Date(rankings$date, format = "%Y-%m-%d")
 ```
 
-Ok so we have the rankings for the last 4 World Cup winning teams, South Africa (2007 and 2019) and New Zealand (2011 and 2015). Let's see how their rankings have progressed for the last 20 years to see how they were ranked in the lead up to their respective world cup wins.
+Ok so we have the rankings for all the top 10 teams since after the 2003 Rugby World Cup. Let's plot these ranking over time to see how each teams world ranking have changed. 
+
+```{r}
+all_rankings <- plot_rankings(rankings)
+all_rankings
+```
+
+Let's decrease the number of teams in each graph so that it is slightly more interpretable. I'm first going to look at all the Southern Hemisphere teams (South Africa, New Zealand, Australia and Argentina). This graph will also show the ranking progression of the last 4 World Cup winning teams, two representing South Africa (2007 and 2019) and two representing New Zealand (2011 and 2015).
 
 ```{r}
 # Example usage
-teams <- c("South Africa", "New Zealand")
-colors <- c("green", "black")
+# Define custom colors for each team
+team_colors <- c("South Africa" = "green", "New Zealand" = "black", "Australia" = "yellow", "Argentina" = "lightblue")
 
-# Plot the rankings for the selected teams
-SA_NZ <- plot_rankings(rankings, teams = teams, colors = colors)
-
+# Plot the rankings with custom colors
+South_rankings <- plot_rankings(rankings, team_colors)
 SA_NZ
 
 ```
