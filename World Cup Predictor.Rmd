@@ -69,11 +69,81 @@ WC_Winners <- df %>%
 WC_Winners
 ```
 
-Ok now I want to see what the win-loss percentage was for every world cup winning team in the 4 years leading up to their respective world cup victory. In order to do this I will look at the number of wins over the combined number of wins and losses over each 4 year period preceding the beginning of the world cup. In 
+Ok now I want to see what the win-loss percentage was for every world cup winning team in the 4 years leading up to their respective world cup victory. In order to do this I will look at the number of wins over the combined number of wins and losses over each 4 year period preceding the beginning of the world cup. First I'm going to create a 2 columns which indicate the year of each match as well as the world cup cycle of each non_world cup falls under.
 
 ```{r}
+library(lubridate)
+
+df <- df %>%
+  mutate(year = year(date))
+
+df <- df %>%
+  mutate(WC_cycle = case_when(
+    year <= 1987 & !world_cup ~ 1987,
+    year > 1987 & year <= 1991 & !world_cup ~ 1991,
+    year > 1991 & year <= 1995 & !world_cup ~ 1995,
+    year > 1995 & year <= 1999 & !world_cup ~ 1999,
+    year > 1999 & year <= 2003 & !world_cup ~ 2003,
+    year > 2003 & year <= 2007 & !world_cup ~ 2007,
+    year > 2007 & year <= 2011 & !world_cup ~ 2011,
+    year > 2011 & year <= 2015 & !world_cup ~ 2015,
+    year > 2015 & year <= 2019 & !world_cup ~ 2019,
+    year > 2019 & year <= 2023 & !world_cup ~ 2023,
+    TRUE ~ NA_integer_
+  )) %>%
+  mutate(WC_cycle = ifelse(is.na(WC_cycle), lag(WC_cycle), WC_cycle))
 
 ```
+
+There is a bit of an issue in that some games were played after certain world cup in the same year and therefore get assigned to that year's world cup even though the games were played afterwards. However this shouldn't be an issue because we can group the data by both the rugby world cup cycle and the 
+
+Ok now I want to calculate the win percentage for each world cup winning team in their respective world cup cycle. Lets first indicate the world cup winner for each world cup cycle vaue so that we can group it by world cup winner and world cup cycle.
+
+```{r}
+library(tidyr)
+
+df <- df %>%
+  mutate(WC_winner = ifelse(is.na(WC_winner), lag(WC_winner), WC_winner)) %>%
+  fill(WC_winner, .direction = "up")
+```
+
+Ok so now to work out the win percentages of each WC winning tema against the top 10 teams in the world.
+
+
+```{r}
+win_loss <- win_percentage(df)
+```
+
+Ok so now it has given a table of the win percentages of each WC winning team against all the teams in our data set. However this data needs to be cleaned due to certain matches being played in the same year but being in the same year as a world cup but being played after the world cup, thereby falling under the next world cup cycle.
+
+```{r}
+win_loss <- win_loss %>% 
+  combine_rows("Australia", "1987", "1991") %>% 
+  combine_rows("Australia", "1995", "1999") %>%
+  filter(!is.nan(win_percentage)) %>%
+  filter(!is.na(WC_winner)) %>% 
+  filter(!is.na(WC_cycle)) %>% 
+  arrange(WC_cycle) %>% 
+  tibble()
+
+win_loss
+
+Best_WC_team <- win_loss %>% 
+  arrange(desc(win_percentage))
+
+Best_WC_team
+  
+```
+
+We can therefore see the respective win percentages of all world cup winning teams against the over top 10 teams in the world in the 4 year cycle preceding each World Cup. Based on this information it can be seen that the New Zealand team which won the 2015 World Cup was had the best win percentage with an an 89% win record. The second best was the England team that won the 2003 Rugby World Cup with an 86% win record, followed by the 2011 World Cup winning New Zealand team, who had an 80% win record. The worst performing team was the South African 1995 World Cup winning team who only managed to win 41% of their matched against top 10 opposition in the 4 years preceding their world cup campaign.
+
+```{r}
+win_percent_bar <- win_loss_bar(win_loss)
+win_percent_bar
+```
+
+
+
 
 
 
