@@ -173,66 +173,70 @@ all_rankings <- plot_rankings(rankings)
 all_rankings
 ```
 
-Let's decrease the number of teams in each graph so that it is slightly more interpretable. I'm first going to look at all the Southern Hemisphere teams (South Africa, New Zealand, Australia and Argentina). This graph will also show the ranking progression of the last 4 World Cup winning teams, two representing South Africa (2007 and 2019) and two representing New Zealand (2011 and 2015).
+Let's decrease the number of teams in each graph so that it is slightly more interpretable. I'm first going to look at all the Southern Hemisphere teams (South Africa, New Zealand, Australia and Argentina). This graph will also show the ranking progression of the last 4 World Cup winning teams, two representing South Africa (2007 and 2019) and two representing New Zealand (2011 and 2015). In order to do this I am first going to split the rankings data set into a South And North data set.
 
 ```{r}
-# Example usage
-# Define custom colors for each team
-team_colors <- c("South Africa" = "green", "New Zealand" = "black", "Australia" = "yellow", "Argentina" = "lightblue")
+south <- rankings %>%
+  select(date, South_Africa, New_Zealand, Australia, Argentina)
 
-# Plot the rankings with custom colors
-South_rankings <- plot_rankings(rankings, team_colors)
-SA_NZ
+north <- rankings %>%
+  select(-South_Africa, -New_Zealand, -Australia, -Argentina)
 
 ```
 
 
+```{r}
+# Plot the rankings of the Southern hemisphere
+south_rankings <- plot_rankings(south)
+south_rankings
 
+# Now for the Northern Hemisphere
+north_rankings <- plot_rankings(north)
+north_rankings
+```
+
+So as can ben seen the Southern hemisphere teams have dominated the rankings historically, with New Zealnad in particular holding the number 1 spot for a long time. Let's see how the ranking have been in the last World Cup cycle.
+
+```{r}
+WC_cycle_23 <- rankings %>% 
+  filter(date >= "2019-11-11")
+
+rankings_23 <- plot_rankings(WC_cycle_23)
+rankings_23
+```
+
+So as cna be seen, in this world cup cycle South Africa have be the top team for most of the time, however Ireland has held the number 1 rank for the last year. 
 
 The rankings stand as such as of the 12 of June 2023.
 
 ```{r}
-library(tibble)
+June_12_rankings <- WC_cycle_23 %>%
+  filter(date == "2023-06-12") %>%
+  t() %>%
+  as.data.frame() %>%  
+  slice(-1) %>%  
+  setNames(c("Ranking")) %>%
+  mutate(Ranking = as.numeric(Ranking)) %>%
+  arrange(Ranking)
 
-June_12_2023_rankings <- rankings[rankings$date == "2023-06-12", ]
+June_12_rankings
+```
 
-# Remove the "date" column
-June_12_2023_rankings <- June_12_2023_rankings[, -1]
+So as can be seen the rankings show Ireland to be ranked number 1 on the most recent available rankings.
 
-# Convert the row into a vector
-values <- (unlist(June_12_2023_rankings))
+Next I want to look at the win percentage of the world cup winning teams against the specific teams they played in the world cup.This is in order to use the winning percentages against the specific teams they beat as an input in my model. So first I need to find out all the teams which each world cup winning team beat on their way to victory at the World Cup and what their win percentage was over each team.
 
-# Sort the values in increasing order
-sorted_values <- sort(values, decreasing = FALSE)
+```{r}
 
-# Create a list of values and column names
-result_tibble <- tibble(Column_names = column_name$sorted_values, Value = as.character(sorted_values))
+```
 
-# Print the result list
-print(result_tibble)
+Ok now I need to web scrape and clean the data set for the 2023 Rugby World Cup fixtures.  
+
+```{r}
 
 ```
 
 
-Then I need to merged the data sets to put the rankings of each team into the main data frame.
-
-```{r}
-June_12_2023_rankings <- rankings[rankings$date == "2023-06-12", ]
-
-# Remove the "date" column
-selected_row <- selected_row[, -1]
-
-# Convert the row into a vector
-values <- as.numeric(unlist(selected_row))
-
-# Sort the values in descending order
-sorted_values <- sort(values, decreasing = TRUE)
-
-# Sort the column names accordingly
-sorted_names <- names(sorted_values)
-
-# Plot the values and column names in descending order
-barplot(sorted_values, names.arg = sorted_names, horiz = TRUE, las = 1, main = "Rankings on 2023-06-12")
 
 ```
 
