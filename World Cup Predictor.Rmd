@@ -142,14 +142,6 @@ win_percent_bar <- win_loss_bar(win_loss)
 win_percent_bar
 ```
 
-
-
-
-
-
-
-
-
 Next I want to include the World rankings of each team which have been collected since the conclusion of the 2003 Rugby World Cup. I need to web scrape this information.
 
 
@@ -164,14 +156,7 @@ table_data <- page %>% html_table(fill = TRUE)
 Now I turn that list which I scraped into a data frame and clean the data frame to only include the teams from the original data set.
 
 ```{r}
-library(dplyr)
-rankings <- bind_rows(table_data)
-
-#delete unnecessary information in first two rows
-rankings <- rankings[-c(1:2), ]
-
-#delete irrelevant teams
-rankings <- select(rankings, matches("^(date|New_Zealand|Australia|South_Africa|France|England|Ireland|Wales|Scotland|Italy|Argentina)$"))
+rankings <- generate_rankings(table_data)
 ```
 
 Next I need to change the date variables from characters to dates in order to merge the ranking data frame with the main data frame (df).
@@ -180,6 +165,23 @@ Next I need to change the date variables from characters to dates in order to me
 df$date <- as.Date(df$date, format = "%Y-%m-%d")
 rankings$date <- as.Date(rankings$date, format = "%Y-%m-%d")
 ```
+
+Ok so we have the rankings for the last 4 World Cup winning teams, South Africa (2007 and 2019) and New Zealand (2011 and 2015). Let's see how their rankings have progressed for the last 20 years to see how they were ranked in the lead up to their respective world cup wins.
+
+```{r}
+# Example usage
+teams <- c("South Africa", "New Zealand")
+colors <- c("green", "black")
+
+# Plot the rankings for the selected teams
+SA_NZ <- plot_rankings(rankings, teams = teams, colors = colors)
+
+SA_NZ
+
+```
+
+
+
 
 The rankings stand as such as of the 12 of June 2023.
 
