@@ -1,6 +1,7 @@
 win_percentage <- function(data){
   data %>%
     group_by(WC_winner, WC_cycle) %>%
+    filter(Winner == "Opposition"| Loser == "Opposition")
     summarize(
       total_matches = sum(home_team == WC_winner | away_team == WC_winner),
       total_wins = sum(Winner == WC_winner)

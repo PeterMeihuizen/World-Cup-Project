@@ -227,37 +227,83 @@ Next I want to look at the win percentage of the world cup winning teams against
 
 ```{r}
 WC_matches <- WC_games(df)
-WC_matches
+WC_matches <- WC_matches %>%
+  mutate(
+    Winner = ifelse(points_diff > 0, home_team, away_team),
+    Loser = ifelse(points_diff < 0, home_team, away_team)
+  )
 ```
 
-Ok so there have been 34 matches won by WC winning teams in the World Cup. Now we need to find the win percentages of the world cup winning teams against these other teams in the 4 year cycle preceding this particular world cup. 
+Ok so there have been 34 matches won by WC winning teams in the World Cup. Now we need to find the win percentages of the world cup winning teams against these other teams in the 4 year cycle preceding this particular world cup.
 
 ```{r}
-
+ind_win_percent <- ind_wins(df)
+ind_win_percent
 ```
 
-
-
-
-
-Ok now I need to web scrape and clean the data set for the 2023 Rugby World Cup fixtures.  
+Ok now I need to join the WC_matches data set with the ind_win_percent data set to get the win percentages of each World Cup winning team against each of their opposition in the 4 year cycle before their world cup.
 
 ```{r}
-
-url_1 <- "https://www.skysports.com/rugby-union/news/12337/12738029/rugby-world-cup-2023-fixtures-schedule-and-kick-off-times-for-england-wales-ireland-scotland-and-more-in-france"
-
-page <- read_html(url_1)
-
-# Identify the HTML elements containing the fixtures
-fixture_elements <- page %>% html_nodes("Fixtures and UK kick-off times")
-
-# Extract the fixture information from the HTML elements
-fixtures <- fixture_elements %>% html_text()
-
-# Convert the fixtures into a table
-fixtures_table <- data.frame(Fixtures = fixtures)
-
-# Print the resulting table
-print(fixtures_table)
+WC_matches <- left_join(WC_matches, ind_win_percent, by = c("Winner", "Loser", "year")) %>%
+  select(total_matches, total_wins, win_percentage, everything())
 ```
 
+So now we've edited the WC_matches data set which shows the win percentages for each game, I want to include the rankings of each team from before each world cup began for the last 4 world cups, seeing as these are the only world cups where the rankings existed.
+
+
+
+
+```{r}
+before_WC_rank <- rankings %>%
+  filter(date == "2007-09-03" | date == "2011-08-29" | date == "2015-09-07" | date == "2019-09-09") %>%
+  t() %>%
+  as.data.frame() %>%
+  setNames(.[1, ]) %>%
+  slice(-1) %>%
+  rownames_to_column("Date") %>% 
+  rename("2007" = "2007-09-03", "2011" = "2011-08-29", "2015" = "2015-09-07", "2019" = "2019-09-09") %>% 
+  mutate(across(everything(), ~ ifelse(. == "New_Zealand", "New Zealand", .))) %>%
+  mutate(across(everything(), ~ ifelse(. == "South_Africa", "South Africa", .)))
+```
+
+Ok now I have each teams ranking before the start of each world cup, now to combine this with the WC_matches data set to show the ranking of each world cup winning team and their opposition for before each world cup.
+
+```{r}
+WC_matches <- WC_matches %>%
+  left_join(before_WC_rank, by = c("home_team" = "Date")) %>%
+  select(-starts_with("Date")) %>%
+  rename(HT_rank = starts_with("2007")) %>%
+  left_join(before_WC_rank, by = c("away_team" = "Date")) %>%
+  select(-starts_with("Date")) %>%
+  rename(AT_rank = starts_with("2007"))
+
+colnames(merged_data) <- make.unique(colnames(merged_data))
+```
+
+```{r}
+WC_matches <- WC_matches %>%
+  mutate(HT_rank_combined = case_when(
+    year == "2007" ~ `HT_rank`,
+    year == "2011" ~ `2011.x`,
+    year == "2015" ~ `2015.x`,
+    year == "2019" ~ `2019.x`
+  ),
+  AT_rank_combined = case_when(
+    year == "2007" ~ `AT_rank`,
+    year == "2011" ~ `2011.y`,
+    year == "2015" ~ `2015.y`,
+    year == "2019" ~ `2019.y`
+  )) %>%
+  select( "year", "home_team",  "away_team", "total_matches", "total_wins", "win_percentage", "points_diff", "Winner", "Loser", "HT_rank_combined","AT_rank_combined")
+
+```
+
+
+
+Ok now I need to import the data set for the 2023 Rugby World Cup fixtures. 
+
+```{r}
+RWC_23 <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures.xlsx")
+```
+
+I can see that I have 15 games which need to be predicted in order to determine who will win the 2023 Rugby World Cup.
