@@ -317,13 +317,64 @@ WC_matches <- WC_matches %>%
   ungroup()
 ```
 
-Now the learning data set is ready.
-
-
-Ok now I need to import the data set for the 2023 Rugby World Cup fixtures. 
+Now the learning data set is ready. Now I need to import the data set for the 2023 Rugby World Cup fixtures. 
 
 ```{r}
 RWC_23 <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures.xlsx")
 ```
 
 I can see that I have 15 games which need to be predicted in order to determine who will win the 2023 Rugby World Cup.
+
+So firstly I need to put in the necessary information in order to predict who will win each game. First it's about working out the win percentages of each team against every team they played against over the last 4 years. I can edit the win_percentage function to calculate the win percentage for each team.
+
+```{r}
+win_matrix <- df %>%
+  filter(date > "2019-11-02") %>% 
+  ind_wins_23()
+
+win_matrix
+```
+
+I have now generated a matrix which indicates the winning percentage of each team against every other team. The value represents the team listed on the row's win percentage against the team listed in the column. Only one value is given per match up, therefore later row values are represented as 0 becasue the win percentage was already shown above. Draws were not considered at all. This only creates a problem with England vs New Zealand, who played one match against each other in the 4 years, which ended in a draw. In this case their win percentage will be represented as NA. Now I need to put this information into the RWC_23 data set. 
+
+```{r}
+win_matrix <- win_matrix %>%
+  pivot_longer(cols = -team1, names_to = "Opposition", values_to = "Win_Percentage") %>% 
+  rename(Team = team1)
+
+win_matrix <- win_matrix %>%
+  add_row(Team = "Wales", Opposition = unique(win_matrix$Team)) %>% 
+  add_row(Opposition = "Argentina", Team = unique(win_matrix$Opposition)) %>% 
+  slice(-n())
+
+RWC_23 <- RWC_23 %>%
+  left_join(select(win_matrix, Team, Opposition, Win_Percentage), by = c("home_team" = "Team", "away_team" = "Opposition")) %>%
+  rename(home_win_percent = Win_Percentage) %>%
+  left_join(select(win_matrix, Team, Opposition, Win_Percentage), by = c("away_team" = "Team", "home_team" = "Opposition")) %>%
+  rename(away_win_percent = Win_Percentage) %>%
+  mutate(home_win_percent = ifelse(!is.na(away_win_percent), 100 - away_win_percent, home_win_percent))
+```
+
+Now we have the win_percentages for the last 4 years for all match ups in the pool stages of the world cup. Now we need to put in the rankings of the different teams.
+
+```{r}
+June_12_rankings <- June_12_rankings %>%
+ # rownames_to_column(var = "Team") %>%
+  mutate(Team = replace(Team, Team == "New_Zealand", "New Zealand"),
+         Team = replace(Team, Team == "South_Africa", "South Africa"))
+
+RWC_23 <- test_RWC_23 %>%
+  left_join(June_12_rankings %>% select(Team, Ranking), by = c("home_team" = "Team")) %>%
+  mutate(HT_rank = Ranking) %>%
+  select(-Ranking) %>%
+  left_join(June_12_rankings %>% select(Team, Ranking), by = c("away_team" = "Team")) %>%
+  mutate(AT_rank = Ranking) %>%
+  select(-Ranking)
+
+
+
+```
+
+
+
+
