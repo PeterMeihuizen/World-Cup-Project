@@ -132,7 +132,6 @@ Best_WC_team <- win_loss %>%
   arrange(desc(win_percentage))
 
 Best_WC_team
-  
 ```
 
 We can therefore see the respective win percentages of all world cup winning teams against the over top 10 teams in the world in the 4 year cycle preceding each World Cup. Based on this information it can be seen that the New Zealand team which won the 2015 World Cup was had the best win percentage with an an 89% win record. The second best was the England team that won the 2003 Rugby World Cup with an 86% win record, followed by the 2011 World Cup winning New Zealand team, who had an 80% win record. The worst performing team was the South African 1995 World Cup winning team who only managed to win 41% of their matched against top 10 opposition in the 4 years preceding their world cup campaign.
@@ -224,19 +223,41 @@ June_12_rankings
 
 So as can be seen the rankings show Ireland to be ranked number 1 on the most recent available rankings.
 
-Next I want to look at the win percentage of the world cup winning teams against the specific teams they played in the world cup.This is in order to use the winning percentages against the specific teams they beat as an input in my model. So first I need to find out all the teams which each world cup winning team beat on their way to victory at the World Cup and what their win percentage was over each team.
+Next I want to look at the win percentage of the world cup winning teams against the specific teams they played in the world cup.This is in order to use the winning percentages against the specific teams they beat as an input in my model. So first I need to find out all the teams which each world cup winning team beat on their way to victory at the World Cup and what their win percentage was over each team. So first New Zealand in 1987.
+
+```{r}
+WC_matches <- WC_games(df)
+WC_matches
+```
+
+Ok so there have been 34 matches won by WC winning teams in the World Cup. Now we need to find the win percentages of the world cup winning teams against these other teams in the 4 year cycle preceding this particular world cup. 
 
 ```{r}
 
 ```
+
+
+
+
 
 Ok now I need to web scrape and clean the data set for the 2023 Rugby World Cup fixtures.  
 
 ```{r}
 
-```
+url_1 <- "https://www.skysports.com/rugby-union/news/12337/12738029/rugby-world-cup-2023-fixtures-schedule-and-kick-off-times-for-england-wales-ireland-scotland-and-more-in-france"
 
+page <- read_html(url_1)
 
+# Identify the HTML elements containing the fixtures
+fixture_elements <- page %>% html_nodes("Fixtures and UK kick-off times")
 
+# Extract the fixture information from the HTML elements
+fixtures <- fixture_elements %>% html_text()
+
+# Convert the fixtures into a table
+fixtures_table <- data.frame(Fixtures = fixtures)
+
+# Print the resulting table
+print(fixtures_table)
 ```
 
