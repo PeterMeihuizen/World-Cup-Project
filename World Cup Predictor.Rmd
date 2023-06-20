@@ -237,7 +237,8 @@ WC_matches <- WC_matches %>%
 Ok so there have been 34 matches won by WC winning teams in the World Cup. Now we need to find the win percentages of the world cup winning teams against these other teams in the 4 year cycle preceding this particular world cup.
 
 ```{r}
-ind_win_percent <- ind_wins(df)
+ind_win_percent <- ind_wins(df) %>% 
+  as.data.frame()
 ind_win_percent
 ```
 
@@ -245,7 +246,11 @@ Ok now I need to join the WC_matches data set with the ind_win_percent data set 
 
 ```{r}
 WC_matches <- left_join(WC_matches, ind_win_percent, by = c("Winner", "Loser", "year")) %>%
-  select(total_matches, total_wins, win_percentage, everything())
+  select(total_matches, total_wins, win_percentage, everything()) %>%
+  mutate(
+    home_win_percent = ifelse(Winner == home_team, as.numeric(win_percentage), (100 - win_percentage)),
+    away_win_percent = ifelse(Winner == away_team, as.numeric(win_percentage), (100 - win_percentage))
+  )
 ```
 
 So now we've edited the WC_matches data set which shows the win percentages for each game, I want to include the rankings of each team from before each world cup began for the last 4 world cups, seeing as these are the only world cups where the rankings existed.
@@ -277,10 +282,8 @@ WC_matches <- WC_matches %>%
   select(-starts_with("Date")) %>%
   rename(AT_rank = starts_with("2007"))
 
-colnames(merged_data) <- make.unique(colnames(merged_data))
-```
+colnames(WC_matches) <- make.unique(colnames(WC_matches))
 
-```{r}
 WC_matches <- WC_matches %>%
   mutate(HT_rank_combined = case_when(
     year == "2007" ~ `HT_rank`,
@@ -294,10 +297,27 @@ WC_matches <- WC_matches %>%
     year == "2015" ~ `2015.y`,
     year == "2019" ~ `2019.y`
   )) %>%
-  select( "year", "home_team",  "away_team", "total_matches", "total_wins", "win_percentage", "points_diff", "Winner", "Loser", "HT_rank_combined","AT_rank_combined")
-
+  select( "year", "home_team",  "away_team", "home_win_percent", "away_win_percent", "points_diff", "Winner", "Loser", "HT_rank_combined","AT_rank_combined")
 ```
 
+Ok now the onlly thing remaining is to indicate is the game was played at a neutral venue or not, this will only be the case if a particular team hosted the world cup and played. 
+
+```{r}
+WC_matches <- WC_matches %>%
+  group_by(year, home_team) %>%
+  mutate(neutral = ifelse(
+    (year == 1987 & home_team == "New Zealand") |
+    (year == 1991 & home_team == "England") |
+    (year == 1995 & home_team == "South Africa") |
+    (year == 2003 & home_team == "Australia") |
+    (year == 2011 & home_team == "New Zealand"),
+    FALSE,
+    TRUE
+  )) %>%
+  ungroup()
+```
+
+Now the learning data set is ready.
 
 
 Ok now I need to import the data set for the 2023 Rugby World Cup fixtures. 

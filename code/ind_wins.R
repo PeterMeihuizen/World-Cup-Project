@@ -23,9 +23,13 @@ ind_wins <- function(data) {
   SCO <- ind_win_percentage(data, opposition = "Scotland") 
   WAL <- ind_win_percentage(data, opposition = "Wales")
   FRA <- ind_win_percentage(data, opposition = "France") 
- 
+  
   result <- bind_rows(NZ, AUS, ARG, SA, IRE, ITA, ENG, SCO, WAL, FRA)
   
-  result %>% filter(!is.na(win_percentage), WC_winner != team)
-
+  result <- result %>% 
+    filter(!is.na(win_percentage), !is.na(WC_cycle), WC_winner != team) %>%
+    rename(Winner = WC_winner, Loser = team, year = WC_cycle)
+  
+  return(result)
 }
+
