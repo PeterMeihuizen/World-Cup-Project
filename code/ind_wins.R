@@ -1,35 +1,28 @@
-ind_win_percentage <- function(data, opposition) {
-  data %>%
-    filter(Winner == opposition | Loser == opposition) %>%
-    group_by(WC_winner, WC_cycle) %>%
+ind_win_percentage <- function(data, Teams) {
+  result <- data %>%
+    filter(Winner %in% Teams, Loser %in% Teams) %>%
+    group_by(WC_cycle, Winner, Loser) %>%
     summarize(
-      team = opposition,
-      total_matches = sum(home_team == WC_winner | away_team == WC_winner),
-      total_wins = sum(Winner == WC_winner)
+      total_matches = n(),
+      total_wins = sum(Winner == WC_winner),
+      win_percentage = total_wins / total_matches * 100
     ) %>%
-    mutate(
-      win_percentage = ifelse(!is.na(WC_winner), total_wins / total_matches * 100, NA)
-    )
-}
-
-ind_wins <- function(data) {
-  NZ <- ind_win_percentage(data, opposition = "New Zealand")
-  AUS <- ind_win_percentage(data, opposition = "Australia") 
-  ARG <- ind_win_percentage(data, opposition = "Argentina") 
-  SA <- ind_win_percentage(data, opposition = "South Africa") 
-  IRE <- ind_win_percentage(data, opposition = "Ireland") 
-  ITA <- ind_win_percentage(data, opposition = "Italy")
-  ENG <- ind_win_percentage(data, opposition = "England")
-  SCO <- ind_win_percentage(data, opposition = "Scotland") 
-  WAL <- ind_win_percentage(data, opposition = "Wales")
-  FRA <- ind_win_percentage(data, opposition = "France") 
-  
-  result <- bind_rows(NZ, AUS, ARG, SA, IRE, ITA, ENG, SCO, WAL, FRA)
-  
-  result <- result %>% 
-    filter(!is.na(win_percentage), !is.na(WC_cycle), WC_winner != team) %>%
-    rename(Winner = WC_winner, Loser = team, year = WC_cycle)
+    ungroup()
   
   return(result)
 }
+
+ind_wins <- function(data, Teams) {
+  result <- data.frame()
+  
+  for (team in Teams) {
+    opposition_teams <- setdiff(Teams, team)
+    team_result <- ind_win_percentage(data, Teams = c(team, opposition_teams))
+    result <- bind_rows(result, team_result)
+  }
+  
+  return(result)
+}
+
+
 
