@@ -216,14 +216,17 @@ June_12_rankings <- WC_cycle_23 %>%
   slice(-1) %>%  
   setNames(c("Ranking")) %>%
   mutate(Ranking = as.numeric(Ranking)) %>%
-  arrange(Ranking)
+  arrange(Ranking) %>% 
+  rownames_to_column(var = "Team") %>%
+  mutate(Team = replace(Team, Team == "New_Zealand", "New Zealand"),
+         Team = replace(Team, Team == "South_Africa", "South Africa"))
 
 June_12_rankings
 ```
 
 So as can be seen the rankings show Ireland to be ranked number 1 on the most recent available rankings.
 
-Next I want to look at the win percentage of the world cup winning teams against the specific teams they played in the world cup.This is in order to use the winning percentages against the specific teams they beat as an input in my model. So first I need to find out all the teams which each world cup winning team beat on their way to victory at the World Cup and what their win percentage was over each team. So first New Zealand in 1987.
+Next I want to look at the win percentage of each team against all other teams in the 4 year cycle before the world cup started. I also want to look at the win percentages between two teams for each respective match up between the teams. I will then import these results into a data set showing all matches which have been played at previous World Cups, what the result was and what was the total win percentage for the teams in that game, as well as their win percentage aginst each other.
 
 ```{r}
 WC_matches <- WC_games(df)
@@ -237,10 +240,30 @@ WC_matches <- WC_matches %>%
 Ok so there have been 34 matches won by WC winning teams in the World Cup. Now we need to find the win percentages of the world cup winning teams against these other teams in the 4 year cycle preceding this particular world cup.
 
 ```{r}
-ind_win_percent <- ind_wins(df) %>% 
+ind_total_win_percent <- ind_total_wins(df, Teams = c("Argentina", "Australia", "New Zealand", "South Africa", "Ireland", "Italy", "England", "Scotland", "Wales", "France")) %>% 
   as.data.frame()
-ind_win_percent
 ```
+
+Now to do the individual win percentages against each individual team.
+
+```{r}
+ind_win_percent <- ind_wins(df, Teams = c("Argentina", "Australia", "New Zealand", "South Africa", "Ireland", "Italy", "England", "Scotland", "Wales", "France")) %>% 
+  as.data.frame()
+```
+
+```{r}
+games <- df %>%
+  mutate(match = paste(sort(c(Winner, Loser)), collapse = "-"),
+         winning_team = ifelse(Winner == team, team, ""),
+         losing_team = ifelse(Loser == team, team, "")) %>%
+  group_by(WC_cycle) %>%
+  summarise(
+    total_games = sum(team == winning_team | team == losing_team),
+    .groups = "drop"
+  )
+
+```
+
 
 Ok now I need to join the WC_matches data set with the ind_win_percent data set to get the win percentages of each World Cup winning team against each of their opposition in the 4 year cycle before their world cup.
 
@@ -248,14 +271,12 @@ Ok now I need to join the WC_matches data set with the ind_win_percent data set 
 WC_matches <- left_join(WC_matches, ind_win_percent, by = c("Winner", "Loser", "year")) %>%
   select(total_matches, total_wins, win_percentage, everything()) %>%
   mutate(
-    home_win_percent = ifelse(Winner == home_team, as.numeric(win_percentage), (100 - win_percentage)),
-    away_win_percent = ifelse(Winner == away_team, as.numeric(win_percentage), (100 - win_percentage))
+    total_home_win_percent = ifelse(Winner == home_team, as.numeric(win_percentage), (100 - win_percentage)),
+    total_away_win_percent = ifelse(Winner == away_team, as.numeric(win_percentage), (100 - win_percentage))
   )
 ```
 
 So now we've edited the WC_matches data set which shows the win percentages for each game, I want to include the rankings of each team from before each world cup began for the last 4 world cups, seeing as these are the only world cups where the rankings existed.
-
-
 
 
 ```{r}
@@ -309,8 +330,11 @@ WC_matches <- WC_matches %>%
     (year == 1987 & home_team == "New Zealand") |
     (year == 1991 & home_team == "England") |
     (year == 1995 & home_team == "South Africa") |
+    (year == 1999 & home_team == "Wales") |
     (year == 2003 & home_team == "Australia") |
-    (year == 2011 & home_team == "New Zealand"),
+      
+    (year == 2011 & home_team == "New Zealand") |
+      ,
     FALSE,
     TRUE
   )) %>%
@@ -358,10 +382,6 @@ RWC_23 <- RWC_23 %>%
 Now we have the win_percentages for the last 4 years for all match ups in the pool stages of the world cup. Now we need to put in the rankings of the different teams.
 
 ```{r}
-June_12_rankings <- June_12_rankings %>%
- # rownames_to_column(var = "Team") %>%
-  mutate(Team = replace(Team, Team == "New_Zealand", "New Zealand"),
-         Team = replace(Team, Team == "South_Africa", "South Africa"))
 
 RWC_23 <- test_RWC_23 %>%
   left_join(June_12_rankings %>% select(Team, Ranking), by = c("home_team" = "Team")) %>%
@@ -370,9 +390,6 @@ RWC_23 <- test_RWC_23 %>%
   left_join(June_12_rankings %>% select(Team, Ranking), by = c("away_team" = "Team")) %>%
   mutate(AT_rank = Ranking) %>%
   select(-Ranking)
-
-
-
 ```
 
 
