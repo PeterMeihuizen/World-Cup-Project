@@ -19,11 +19,13 @@ knitr::opts_chunk$set(
 ```
 
 
-Introduction:
+# 1. Introduction 
 
-For this project I will attempt to predict the winner of the 2023 Rugby World Cup using historical data of every international rugby match played by between the the historically best 10 international men's rugby teams in the world. The fixtures for the 2023 World Cup has already been released, with it consisting of group stages and knockout matches. Using the past match results from previous years, I will predict who will win every world cup game between the top 10 teams in the world, including the Rugby World Cup Final.
+Machine learning has opened up the possibility to predict certain unknown outcomes by building models which can learn from histroical data and predict an outcome based on what has been the reuslt in the past. For this project I will attempt to predict the winner of the 2023 Rugby World Cup using a random forest machine learning model. This requires me to train the model on an existing data set in order to estimate the results for the particular fixtures which will be played at the 2023 World Cup. I will be extracting the necessary information for my training model from a historical data set which gives the result of every international rugby match played between the historically best 10 international men's rugby teams in the world, as well as from a online websites which tells me the ranking of each team before they played in a particular World Cup. The fixtures for the 2023 World Cup have already been released, with it consisting of group stages and knockout matches. Using the past match results from previous years, as well as the ranking of each team and their success at previous World Cups, as features, I will predict who will win every world cup game between the top 10 teams in the world, who will progress to each playoff martches, and ultimately who will win the 2023 Rugby World Cup Final.
 
-In order to conduct my analysis, I need to import the data set from excel format. This data set includes all matches which have been played since 1984, 3 years before the start of the first Rugby World Cup. 
+# 2. Descriptive Statistics and Creating the Training Data Set
+
+In order to conduct my analysis, I need to import the data set from excel format. This data set includes all matches which have been played since 1984, 3 years before the start of the first Rugby World Cup. Each observation represents a different match between two teams. The relevant variables which are given include the date of the match, the home team, the away team, the home teams score, the away teams score, whether the match was played at a nuetral venue and whether the match the match was palyed at a World Cup. 
 
 ```{r}
 library(readxl)
@@ -32,8 +34,8 @@ library(tidyr)
 library(rvest)
 library(lubridate)
 library(ranger)
+library(xtable)
 df <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\Data\\Rugby_matches_data_1984-2023.xlsx")
-
 source("code/subtract.R")
 source("code/win_percentage.R")
 source("code/combine_rows.R")
@@ -45,23 +47,20 @@ source("code/win_percent_process.R")
 source("code/process_RWC_data.R")
 ```
 
-I am going to do is generate 4 new columns, in order to identify the winner of each game, the points difference of each game and the winner of the World Cup. First I create a function to generate the points difference between the home_team and away_team.
+I decided to generate 4 new columns, in order to identify the winner of each game, the loser of each game, the points difference of each game and the winner of the World Cup for each World Cup final matches. The sign of the points difference value indicates the winner of the match, with positive values indicating the home team won the match and negative values indicating the away team as the winner.
 
 ```{r}
+#First I generate the points difference between the home_team and away_team.
 df <- df %>% 
   mutate(points_diff = subtract(., "home_score", "away_score"))
 ```
 
-Next is a variable for the winner and loser of the game.
-
 ```{r}
-#Winner of game 
+#Winner and loser of the game 
 df <- df %>% 
   mutate(Winner = ifelse(points_diff > 0, home_team, ifelse(points_diff < 0, away_team, ".")),
          Loser = ifelse(points_diff < 0, home_team, ifelse(points_diff > 0, away_team, ".")))
 ```
-
-Then a variable which indicates the winner of the World Cup
 
 ```{r}
 # Winner of the World Cup
@@ -79,23 +78,24 @@ df <- df %>%
     }
     .
   }
-
 ```
 
-I can now see the winners of each world cup up to date
-
-```{r}
+```{r results='asis'}
 WC_Winners <- df %>%
   filter(!is.na(WC_winner)) %>%
-  select(competition, WC_winner) %>%
-  tibble()
+  select(competition, WC_winner)
 
+WC_winner_table <- options(xtable.comment = FALSE)
+WC_winner_table <- xtable(WC_Winners, caption = "World Cup Winners")
 
 # Print the summary
-WC_Winners
+WC_winner_table
 ```
 
-Ok now I want to see what the win-loss percentage was for every world cup winning team in the 4 years leading up to their respective world cup victory. In order to do this I will look at the number of wins over the combined number of wins and losses over each 4 year period preceding the beginning of the world cup. First I'm going to create a 2 columns which indicate the year of each match as well as the world cup cycle of each non_world cup falls under.
+I can now see the winners of each world cup up to date. As can be seen New Zealnd won the first World Cup Final in 1987 whilst South Africa won the most recent World Cup final (2019). Both of these teams have each won the Rugby World Cup 3 times. Otherwise Australia have won 2 World Cups (1991 and 1999) whilst England won 1 title in 2003. 
+
+In order to work out World Cup cycle specific values,  I created a new variable specifying which World Cup cycle each match fell under in order to group the data set by each World Cup cycle. This enabled me to determine the win percentage for each world cup winning team for the 4 years leading up to their respective World Cup victories. In order to do this I looked at the number of wins over the total number of games played for each team in each  over each 4 year period preceding the beginning of the world cup.
+
 
 ```{r}
 df <- df %>%
@@ -119,52 +119,41 @@ df <- df %>%
 
 ```
 
-There is a bit of an issue in that some games were played after certain world cup in the same year and therefore get assigned to that year's world cup even though the games were played afterwards. However this shouldn't be an issue because we can group the data by both the rugby world cup cycle and the 
-
-Ok now I want to calculate the win percentage for each world cup winning team in their respective world cup cycle. Lets first indicate the world cup winner for each world cup cycle vaue so that we can group it by world cup winner and world cup cycle.
-
 ```{r}
 df <- df %>%
   mutate(WC_winner = ifelse(is.na(WC_winner), lag(WC_winner), WC_winner)) %>%
   fill(WC_winner, .direction = "up")
 ```
 
-Ok so now to work out the win percentages of each WC winning tema against the top 10 teams in the world.
-
-
 ```{r}
+#win percent data frame
 win_loss <- win_percentage(df)
 ```
 
-Ok so now it has given a table of the win percentages of each WC winning team against all the teams in our data set. However this data needs to be cleaned due to certain matches being played in the same year but being in the same year as a world cup but being played after the world cup, thereby falling under the next world cup cycle.
-
-```{r}
+```{r results='asis'}
 win_loss <- win_loss %>% 
   combine_rows("Australia", "1987", "1991") %>% 
   combine_rows("Australia", "1995", "1999") %>%
   filter(!is.nan(win_percentage)) %>%
   filter(!is.na(WC_winner)) %>% 
   filter(!is.na(WC_cycle)) %>% 
-  arrange(WC_cycle) %>% 
-  tibble()
-
-win_loss
+  arrange(WC_cycle)
 
 Best_WC_team <- win_loss %>% 
   arrange(desc(win_percentage))
 
-Best_WC_team
+Best_WC_team_table <- xtable(Best_WC_team, caption = "Best World Cup Winning Teams")
+Best_WC_team_table
 ```
-
-We can therefore see the respective win percentages of all world cup winning teams against the over top 10 teams in the world in the 4 year cycle preceding each World Cup. Based on this information it can be seen that the New Zealand team which won the 2015 World Cup was had the best win percentage with an an 89% win record. The second best was the England team that won the 2003 Rugby World Cup with an 86% win record, followed by the 2011 World Cup winning New Zealand team, who had an 80% win record. The worst performing team was the South African 1995 World Cup winning team who only managed to win 41% of their matched against top 10 opposition in the 4 years preceding their world cup campaign.
 
 ```{r}
 win_percent_bar <- win_loss_bar(win_loss)
 win_percent_bar
 ```
 
-Next I want to include the World rankings of each team which have been collected since the conclusion of the 2003 Rugby World Cup. I need to web scrape this information.
+We can therefore see the respective win percentages of all World Cup winning teams against the over top 10 teams in the world in the 4 year cycle preceding each World Cup. Based on this information it can be seen that the New Zealand team which won the 2015 World Cup was had the best win percentage with an 89% win record. The second best was the England team that won the 2003 Rugby World Cup with an 86% win record, followed by the 2011 World Cup winning New Zealand team, who had an 80% win record. The worst performing team was the South African 1995 World Cup winning team who only managed to win 41% of their matched against top 10 opposition in the 4 years preceding their world cup campaign.
 
+Next, I wanted to include the World rankings of each team which have been collected since the conclusion of the 2003 Rugby World Cup. In order to do this I scraped the data from Wikimedia page, showing the world ranking for every team for every week since after the 2003 Rugby World Cup. I turned the list which was scraped into a data frame.
 
 ```{r}
 #Scraping the data
@@ -173,27 +162,23 @@ page <- read_html(url)
 table_data <- page %>% html_table(fill = TRUE)
 ```
 
-Now I turn that list which I scraped into a data frame and clean the data frame to only include the teams from the original data set.
-
 ```{r}
+#clean the ranking data
 rankings <- generate_rankings(table_data)
 ```
 
-Next I need to change the date variables from characters to dates in order to merge the ranking data frame with the main data frame (df).
-
 ```{r}
+#changing date variable type
 df$date <- as.Date(df$date, format = "%Y-%m-%d")
 rankings$date <- as.Date(rankings$date, format = "%Y-%m-%d")
 ```
 
-Ok so we have the rankings for all the top 10 teams since after the 2003 Rugby World Cup. Let's plot these ranking over time to see how each teams world ranking have changed. 
-
 ```{r}
-all_rankings <- plot_rankings(rankings)
+all_rankings <- plot_rankings(rankings, title = "Rankings of All Teams Over Time")
 all_rankings
 ```
 
-Let's decrease the number of teams in each graph so that it is slightly more interpretable. I'm first going to look at all the Southern Hemisphere teams (South Africa, New Zealand, Australia and Argentina). This graph will also show the ranking progression of the last 4 World Cup winning teams, two representing South Africa (2007 and 2019) and two representing New Zealand (2011 and 2015). In order to do this I am first going to split the rankings data set into a South And North data set.
+The graph represents the ranking of each team over the last 20 years with the lowet number (1) indicating the highest ranked team. I decided to decrease the number of teams in each graph so that they could be slightly more interpretable. I therefore decided to look at all the Southern Hemisphere teams (South Africa, New Zealand, Australia and Argentina) and Northern Hemisphere team (England, Ireland, France, Italy, Scotland and Wales) seperately. 
 
 ```{r}
 south <- rankings %>%
@@ -203,30 +188,29 @@ north <- rankings %>%
   select(-South_Africa, -New_Zealand, -Australia, -Argentina)
 ```
 
-
 ```{r}
 # Plot the rankings of the Southern hemisphere
-south_rankings <- plot_rankings(south)
+south_rankings <- plot_rankings(south, title = "Rankings of Southern Hemisphere Teams Over Time")
 south_rankings
 
 # Now for the Northern Hemisphere
-north_rankings <- plot_rankings(north)
+north_rankings <- plot_rankings(north, title = "Rankings of Northern Hemisphere Teams Over Time")
 north_rankings
 ```
 
-So as can ben seen the Southern hemisphere teams have dominated the rankings historically, with New Zealnad in particular holding the number 1 spot for a long time. Let's see how the ranking have been in the last World Cup cycle.
+As can be seen the Southern Hemisphere teams have dominated the rankings historically, with New Zealand in particular holding the number 1 spot for the most time overall.
 
 ```{r}
 WC_cycle_23 <- rankings %>% 
   filter(date >= "2019-11-11")
 
-rankings_23 <- plot_rankings(WC_cycle_23)
+rankings_23 <- plot_rankings(WC_cycle_23, title = "Rankings of All Teams in 2023 RWC Cycle")
 rankings_23
 ```
 
-So as can be seen, in this world cup cycle South Africa have be the top team for most of the time, however Ireland has held the number 1 rank for the last year. The rankings stand as such as of the 12 of June 2023.
+The graph above shows the rankings progression for the last 4 years, representing the 2023 Rugby World Cup cycle. As can be seen, in this World Cup cycle South Africa have be the top team for the majority of the period, however Ireland has held the number 1 rank for the last year. The rankings stand as such as of the 12 of June 2023.
 
-```{r}
+```{r results='asis'}
 June_12_rankings <- WC_cycle_23 %>%
   filter(date == "2023-06-12") %>%
   t() %>%
@@ -239,12 +223,12 @@ June_12_rankings <- WC_cycle_23 %>%
   mutate(Team = replace(Team, Team == "New_Zealand", "New Zealand"),
          Team = replace(Team, Team == "South_Africa", "South Africa"))
 
-June_12_rankings
+June_12_rankings_table <- xtable(Best_WC_team, caption = "Rankings on 12 June 2023")
 ```
 
-So as can be seen the rankings show Ireland to be ranked number 1 on the most recent available rankings.
+So as can be seen the rankings show Ireland to be ranked number 1 on the most recent available rankings. In second place is France followed by New Zealand and then South Africa. Italy are not even ranked in the top 10, however I belive this is due to them playing more top 10 teams in a year relative to other teams above them, therefore I feel they are harshly represented at number 14.
 
-Next I want to look at the win percentage of each team against all other teams in the 4 year cycle before the world cup started. I also want to look at the win percentages between two teams for each respective match up between the teams. I will then import these results into a data set showing all matches which have been played at previous World Cups, what the result was and what was the total win percentage for the teams in that game, as well as their win percentage aginst each other.
+Next I wanted to look at the win percentage of each team against all other teams in the 4 year cycle before the world cup started. I did this so that I could import these win percentages into a data set showing all matches which have been played at previous World Cups between the top 10 teams. This could them be used for the training set of my model. When restricting the main data frame to only World Cup matches I saw that there have been 132 matches played between these teams at previous World Cups.
 
 ```{r}
 WC_matches <- WC_games(df)
@@ -255,9 +239,7 @@ WC_matches <- WC_matches %>%
   )
 ```
 
-Ok so there have been 132 matches played between these teams at World Cups. As an input to my model I need to calculate the win percentage of each team against these other teams in the 4 year cycle preceding this particular world cup.
-
-```{r}
+```{r results='asis'}
 win_percent_df <- win_percent_process(df)
 
 top_10_teams <- win_percent_df %>%
@@ -266,13 +248,11 @@ top_10_teams <- win_percent_df %>%
   slice_head(n = 10) %>%
   select(WC_cycle, team, total_wins, total_matches, win_percentage)
 
-top_10_teams <- as_tibble(top_10_teams)
-top_10_teams
+top_10_teams_table <- xtable(top_10_teams, caption = "Top 10 Teams of All Time")
+top_10_teams_table
 ```
 
-The top 10 teams table shows the win percentages of teams from each world cup cycle to show who was the best performing teams from all combined world cup cycles. As can be seen New Zealand take up 5 of the top 6 spots in the highlighting their dominance outside of world cups. The 2015 World Cup winning team takes the top spot with a win percentage of 88.6% against all the top teams in the world, thereby making a strong case for being classified as the greatest rugby team in history. Interesting to note is that two teams from the 2023 world cup cycle are included in the top 10, France in 7th place with a win percentage of 77.4% and Ireland with a win percentage of 76.7%. This shows the good form both of these teams have had leading up to the 2023 Rugby World Cup.
-
-Ok now I need to import the winning percentages into the WC_matches data set so that I can show the win percentages of each team as an input into each game they played.
+The top 10 teams table shows the win percentages of teams from each world cup cycle to show who was the best performing teams from all combined world cup cycles, including teams that di not win the World Cup. As can be seen New Zealand take up 5 of the top 6 spots in the highlighting their dominance outside of world cups. The 2015 World Cup winning team takes the top spot with a win percentage of 88.6% against all the top teams in the world, thereby making a strong case for being classified as the greatest rugby team in history. Interesting to note is that two teams from the 2023 world cup cycle are included in the top 10, France in 7th place with a win percentage of 77.4% and Ireland with a win percentage of 76.7%. This shows the good form both of these teams have had leading up to the 2023 Rugby World Cup.
 
 ```{r}
 WC_matches <- left_join(WC_matches, win_percent_df, by = c("year" = "WC_cycle", "home_team" = "team")) %>%
@@ -283,10 +263,10 @@ WC_matches <- left_join(WC_matches, win_percent_df, by = c("year" = "WC_cycle", 
   select(-win_percentage)
 ```
 
-So now we've edited the WC_matches data set which shows the win percentages for each game, I want to include the rankings of each team from before each world cup began for the last 4 world cups, seeing as these are the only world cups where the rankings existed.
-
+The next step was to include the rankings of each team from before each world cup began for the last 4 world cups, seeing as these are the only world cups where the rankings existed. I included 2 variables for the rank of the home team and the away team. I also included a column indicating is the game was played at a nuetral venue or not. The only games to not be neutral were those played by the team hosting the World Cup. Lastly I included a variable which indicated the number of World Cup each team had won before the particular World Cup which was played in that year. For example South Africa's value would be 0 for the 1995 World Cup and before, 1 for the 1999 to 2007 World Cups, 2 for 2011 to 2019 World Cups and 3 for the 2023 Rugby World Cups. Again a variable was put in for both the home and away teams. I decide to include this variable because I believe that previous World Cup wins has an effect on teams winning considering many teams have won multiple World Cups and there are so few teams to have won the competition.
 
 ```{r}
+#Before World Cup Rankings for each team
 before_WC_rank <- rankings %>%
   filter(date == "2007-09-03" | date == "2011-08-29" | date == "2015-09-07" | date == "2019-09-09") %>%
   t() %>%
@@ -299,9 +279,8 @@ before_WC_rank <- rankings %>%
   mutate(across(everything(), ~ ifelse(. == "South_Africa", "South Africa", .)))
 ```
 
-Ok now I have each teams ranking before the start of each world cup, now to combine this with the WC_matches data set to show the ranking of each world cup winning team and their opposition for before each world cup.
-
 ```{r}
+#joining rankings to training data
 WC_matches <- WC_matches %>%
   left_join(before_WC_rank, by = c("home_team" = "Date")) %>%
   select(-starts_with("Date")) %>%
@@ -311,8 +290,8 @@ WC_matches <- WC_matches %>%
   rename(AT_rank_2007 = starts_with("2007"))
 ```
 
-
 ```{r}
+#combining rank values to be only one column each
 WC_matches <- WC_matches %>%
   mutate(HT_rank_combined = case_when(
     year == "2007" ~ `HT_rank_2007`,
@@ -329,9 +308,8 @@ WC_matches <- WC_matches %>%
   select( "year", "home_team",  "away_team", "HT_win_percent", "AT_win_percent", "points_diff", "Winner", "Loser", "HT_rank_combined","AT_rank_combined")
 ```
 
-Ok now the onlly thing remaining is to indicate is the game was played at a neutral venue or not, this will only be the case if a particular team hosted the world cup and played. 
-
 ```{r}
+# adding neutral column
 WC_matches <- WC_matches %>%
   group_by(year, home_team) %>%
   mutate(neutral = ifelse(
@@ -348,8 +326,6 @@ WC_matches <- WC_matches %>%
   )) %>%
   ungroup()
 ```
-
-Now I know that previous world cup wins has an effect on teams winning considering many teams have one multiple and there are so few teams to have won. Therefore I am going to include a variable which indicates how many world cups each teams has won before that particular world cup.
 
 ```{r}
 WC_titles <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\WC_titles.xlsx")
@@ -383,17 +359,17 @@ WC_matches <- WC_matches %>%
   select(-Winner, -Loser)
 ```
 
-Now the learning data set is ready. In order to include each team's ranking as a variable which determines the outcome I needed to replace all the NA's in the years before there were rankings with the value 15, as this is larger than all other ranking values. 
+This finalizes the testing data set. In order to include each team's ranking as a variable which determines the outcome I needed to replace all the NA's in the years before there were rankings. I decided to replace them with the value 15, as this is larger than all other ranking values. 
 
-Now I need to import the data set for the 2023 Rugby World Cup fixtures. 
+# 3. Creating the Testing Data Set
 
 ```{r}
 RWC_23 <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures.xlsx")
 ```
 
-I can see that I have 15 games which need to be predicted in order to determine who will win the 2023 Rugby World Cup.
+The next step was to create the testing data set with all the 2023 Rugby World Cup matches. After Importing the data set I can see that there are 15 games which need to be predicted in order to determine who will win the 2023 Rugby World Cup. So firstly I needed to put in the necessary information in order to predict who will win each game. This meant that the data set needed to include the following for each match: the year, home team, away team, home team win percentage, away team win percentage, home team rank, away team rank, neutral, home team titles, away team titles and lastly the points differences as the target variable.
 
-So firstly I need to put in the necessary information in order to predict who will win each game. First it's about working out the win percentages of each team against all the teams in the data set over the last 4 years. I can use the win_percentgae data frame to iimport the relevant data.
+For win percentages I used the win percentages of each team in the 2023 World Cup cycle which was worked out earlier. For rank I used the relevant ranking for each team as was given in the June 12 ranking table. For title I used the number of World Cup titles each team as won to date and the neutral column was FALSE for all observations, except for where France (the hosts of the tournament) were the home team.
 
 
 ```{r}
@@ -401,8 +377,9 @@ pool_RWC_23 <- process_RWC_data(RWC_23) %>%
   slice(1:8)
 ```
 
+# 4. Random Forest Model and Predictions
 
-Now both the training and testing data sets have been set up meaning I can perform a random forest to determine who is going to win the world cup.
+After creating the training and testing data sets have been set up meaning I can perform a random forest to determine who is going to win the 2023 Rugby World Cup. The random forest model learns from the training data set in order to predict what the the probable value of the target variable in the testing data set. In the case of this project, it sees how the other variables, or features, determines the points difference value in the previous World Cup matches data set. Based off of this information it predicts the points difference of each match in the 2023 matches data set, based off of the particular feature values of each observation. A random forest is first run with limited parameters to include as many possible results and sets up a grid of all the results showing the results and accuracy of many different combinations of parameters. Hyper parameter tuning is then done, which lists the order of the best combinations of parameters, with the best combination located on the top. This indicates the parameters which should be applied when using the random forest model to predict the outcomes of your target variable.
 
 ```{r}
 rf1 <- ranger(
@@ -415,7 +392,7 @@ rf1 <- ranger(
 (default_rmse <- sqrt(rf1$prediction.error))
 ```
 
-```{r}
+```{r results='asis'}
 # create hyperparameter grid
 hyper_grid <- expand.grid(
   mtry = floor(10 * c(.1, .15, .25, .333, .4)),
@@ -448,8 +425,12 @@ hyper_grid %>%
   arrange(rmse) %>%
   mutate(perc_gain = (default_rmse - rmse) / default_rmse * 100) %>%
   head(10)
+
+hyper_grid_table <- xtable(hyper_grid, caption = "Hyperparameter Tuning Results")
+hyper_grid_table
 ```
 
+The hyperparameter tuning results for my model suggests the best combination of parameters in the top line of the table. I can therefore put these parameters into my random forest model and estimate the results on my testing set, with this combination likely to give me the most accurate results.
 
 ```{r}
 rf2 <- ranger(
@@ -463,14 +444,42 @@ rf2 <- ranger(
 )
 ```
 
+In order for the model to work on my testing data set, I had to restrict it to only look at pool games initially. Once I ran the model on the pool games, the model predicted the points difference of each match, once again with a positive value indicating the home team won and a negative value indicating the away team won. Once the winners of each pool match was determined, I was able to manually put the information into the quarter-final matches to correctly indicate who would play each other in which particular match. The modle was thereafter run again to predict the outcomes of the ppol matches and the quarter-finals. This process was repeated for both the semi-finals and final, with the final list showing the outcome for the entire World Cup.
+
 ```{r}
 predictions_rf2 <- predict(rf2, data = pool_RWC_23)$predictions
 
 print(predictions_rf2)
 ```
 
-Results:
-Ok so now editing the relevant excel sheet to include the quarter finalists.
+The results of the pools matches show the following outcomes (values were rounded to whole numbers):
+
+France beat New Zealand by 6 points.
+
+England beat Argentina by 8 points.
+
+South Africa beat Scotland by 8 points.
+
+South Africa beat Ireland by 7 points.
+
+Australia beat Wales by 3 points.
+
+New Zealand beat Italy by 30 points.
+
+France beat Italy by 31 points.
+
+Ireland beat Scotland by 17 points.
+
+
+This means that the quarter-final fixtures become as follows:
+
+QF1: Australia vs Argentina
+
+QF2: South Africa vs New Zealand
+
+QF3: England vs Wales
+
+QF4: France vs Ireland
 
 ```{r}
 QF_RWC_23 <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures_QF.xlsx")
@@ -479,13 +488,26 @@ QF_RWC_23 <- process_RWC_data(QF_RWC_23) %>%
   slice(1:12)
 ```
 
-
-
 ```{r}
 predictions_rf2_QF <- predict(rf2, data = QF_RWC_23)$predictions
-
-print(predictions_rf2_QF)
 ```
+
+After including the relevant teams for each quarter-final the results show as follows:
+
+QF1: Australia beat Argentina by 2 points
+
+QF2: South Africa beat New Zealand by 1 point
+
+QF3: England beat Wales by 8 points.
+
+QF4: France beat Ireland by 11 points.
+
+
+This means that Australia, South Africa, England and France progress to the semi-finals with the following fixtures taking place:
+
+SF1: Australia vs South Africa
+
+SF2: France vs England
 
 ```{r}
 SF_RWC_23 <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures_SF.xlsx")
@@ -494,12 +516,22 @@ SF_RWC_23 <- process_RWC_data(SF_RWC_23) %>%
   slice(1:14)
 ```
 
-
-
 ```{r}
 predictions_rf2_SF <- predict(rf2, data = SF_RWC_23)$predictions
-print(predictions_rf2_SF)
 ```
+
+After running the model with the new fixtures included, the results of the semi-finals show as follows:
+
+SF1: South Africa beat Australia by 10 points.
+
+SF2: France beat England by 6 points.
+
+
+Therefore the final becomes the following match-up:
+
+France vs South Africa
+
+
 
 ```{r}
 F_RWC_23 <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures_F.xlsx")
@@ -510,7 +542,86 @@ F_RWC_23 <- process_RWC_data(F_RWC_23) %>%
 
 ```{r}
 predictions_rf2_F <- predict(rf2, data = F_RWC_23)$predictions
-print(predictions_rf2_F)
 ```
 
-Therefore France will win the 2023 Rugby World Cup.
+Finally the result of the final shows as:
+
+France beat South Africa by 4 points.
+
+
+Therefore this model predicts that France will win the 2023 Rugby World Cup. The final list of results is given below with all the relevant information:
+
+```{r results='asis'}
+F_RWC_23$points_diff <- predictions_rf2_F
+
+F_RWC_23_tab <- F_RWC_23 %>%
+  mutate(stage = c(rep("Pools", 8), rep("QF", 4), rep("SF", 2), "F")) %>%
+  select(stage, home_team, away_team, points_diff)
+
+F_RWC_23_table <- xtable(F_RWC_23_tab, title = "2023 Rugby World Cup Matches With Predictions")
+F_RWC_23_table
+```
+
+I suspected that France being the hosting team had a significant effect on this outcome. In order to test this theory I determined looked at the feature importance of the model which measures the impurity and permutation of each variable to see which were the most important. Impurity looks at the features which have the largest average decrease in the sum of squared errors across all trees in the model. The variable with the largest average is considered the most important. Permutation looks at how the accuracy of each variable decreases as the values of features are changed. The variables with the largest average decrease in accuracy over all the trees are considered to be the most important features.
+
+```{r}
+rf_impurity <- ranger(
+  formula = points_diff ~ ., 
+  data = WC_matches, 
+  num.trees = 2000,
+  mtry = 1,
+  min.node.size = 1,
+  sample.fraction = .63,
+  replace = FALSE,
+  importance = "impurity",
+  respect.unordered.factors = "order",
+  verbose = FALSE,
+  seed  = 123
+)
+
+# re-run model with permutation-based variable importance
+rf_permutation <- ranger(
+  formula = points_diff ~ ., 
+  data = WC_matches, 
+  num.trees = 2000,
+  mtry = 1,
+  min.node.size = 1,
+  sample.fraction = .63,
+  replace = FALSE,
+  importance = "permutation",
+  respect.unordered.factors = "order",
+  verbose = FALSE,
+  seed  = 123
+)
+
+p1 <- vip::vip(rf_impurity, num_features = 25, bar = FALSE) +
+  gg_title("Impurity")
+p2 <- vip::vip(rf_permutation, num_features = 25, bar = FALSE) +
+  gg_title("Permutation")
+
+gridExtra::grid.arrange(p1, p2, nrow = 1)
+```
+
+My results show that for both impurity and permutation, the away team feature was the most important feature. On the opposite side of the table it shows the neutral feature to be the least important. This means that whether or not the game was played at a neutral venue had an insignificant effect on the result of the match. This goes against my theory that France were largely picked as the winner due to them being the host country. The results suggest that this was the least important feature meaning that it is likely that France would have been predicted to win the 2023 Rugby World Cup even if they did not host it. 
+
+In order to test this I changed all the neutral values in France's games to see if the results would differ without France as the hosts. 
+
+```{r}
+F_RWC_23_nue <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures_F_nue.xlsx")
+
+F_RWC_23_nue <- process_RWC_data(F_RWC_23_nue)
+```
+
+```{r}
+predictions_rf2_F_nue <- predict(rf2, data = F_RWC_23_nue)$predictions
+predictions_rf2_F_nue
+```
+
+# Conclusion
+So as can be seen, using a random forest machine learning model, I was able to predict that France will win the 2023 Rugby World Cup. Using past rugby world cup match results, the rankings of teams and their number of title wins my model was able to learn from my training set and predict the points difference for every match of the tournament. The final result suggested that France will beat South Africa by 4 points. However it should be noted that World Cups are a difficult thing to predict accurately. No body would have predicted South Africa to win the World Cup in 2019 and I am almost certain the data certainly would not have suggested they would. So maybe another team could surprise us, however if you were wnting to put money on a team to win the World Cup, the data would suggest that France is you best bet.
+
+
+
+
+
+
