@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 # 1. Introduction 
 
-Machine learning has opened up the possibility to predict certain unknown outcomes by building models which can learn from histroical data and predict an outcome based on what has been the reuslt in the past. For this project I will attempt to predict the winner of the 2023 Rugby World Cup using a random forest machine learning model. This requires me to train the model on an existing data set in order to estimate the results for the particular fixtures which will be played at the 2023 World Cup. I will be extracting the necessary information for my training model from a historical data set which gives the result of every international rugby match played between the historically best 10 international men's rugby teams in the world, as well as from a online websites which tells me the ranking of each team before they played in a particular World Cup. The fixtures for the 2023 World Cup have already been released, with it consisting of group stages and knockout matches. Using the past match results from previous years, as well as the ranking of each team and their success at previous World Cups, as features, I will predict who will win every world cup game between the top 10 teams in the world, who will progress to each playoff martches, and ultimately who will win the 2023 Rugby World Cup Final.
+Machine learning has opened up the possibility to predict certain unknown outcomes by building models which can learn from histroical data and predict an outcome based on what has been the result in the past. For this project I will attempt to predict the winner of the 2023 Rugby World Cup using a random forest machine learning model. This requires me to train the model on an existing data set in order to estimate the results for the particular fixtures which will be played at the 2023 World Cup. I will be extracting the necessary information for my training model from a historical data set which gives the result of every international rugby match played between the historically best 10 international men's rugby teams in the world, as well as from a online websites which tells me the ranking of each team before they played in a particular World Cup. The fixtures for the 2023 World Cup have already been released, with it consisting of group stages and knockout matches. Using the past match results from previous years, as well as the ranking of each team and their success at previous World Cups, as features, I will predict who will win every world cup game between the top 10 teams in the world, who will progress to each playoff martches, and ultimately who will win the 2023 Rugby World Cup Final.
 
 # 2. Descriptive Statistics and Creating the Training Data Set
 
@@ -208,7 +208,7 @@ rankings_23 <- plot_rankings(WC_cycle_23, title = "Rankings of All Teams in 2023
 rankings_23
 ```
 
-The graph above shows the rankings progression for the last 4 years, representing the 2023 Rugby World Cup cycle. As can be seen, in this World Cup cycle South Africa have be the top team for the majority of the period, however Ireland has held the number 1 rank for the last year. The rankings stand as such as of the 12 of June 2023.
+The graph above shows the rankings progression for the last 4 years, representing the 2023 Rugby World Cup cycle. As can be seen, in this World Cup cycle South Africa have be the top team for the majority of the period, however Ireland has held the number 1 rank for the last year. The rankings stand as such as of the 12 of June 2023. These rankings show Ireland to be ranked number 1 on the most recent available rankings. In second place is France followed by New Zealand and then South Africa. Italy are not even ranked in the top 10, however I belive this is due to them playing more top 10 teams in a year relative to other teams above them, therefore I feel they are harshly represented at number 14.
 
 ```{r results='asis'}
 June_12_rankings <- WC_cycle_23 %>%
@@ -223,10 +223,10 @@ June_12_rankings <- WC_cycle_23 %>%
   mutate(Team = replace(Team, Team == "New_Zealand", "New Zealand"),
          Team = replace(Team, Team == "South_Africa", "South Africa"))
 
-June_12_rankings_table <- xtable(Best_WC_team, caption = "Rankings on 12 June 2023")
+June_12_rankings_table <- xtable(June_12_rankings, caption = "Rankings on 12 June 2023")
 ```
 
-So as can be seen the rankings show Ireland to be ranked number 1 on the most recent available rankings. In second place is France followed by New Zealand and then South Africa. Italy are not even ranked in the top 10, however I belive this is due to them playing more top 10 teams in a year relative to other teams above them, therefore I feel they are harshly represented at number 14.
+
 
 Next I wanted to look at the win percentage of each team against all other teams in the 4 year cycle before the world cup started. I did this so that I could import these win percentages into a data set showing all matches which have been played at previous World Cups between the top 10 teams. This could them be used for the training set of my model. When restricting the main data frame to only World Cup matches I saw that there have been 132 matches played between these teams at previous World Cups.
 
@@ -421,12 +421,12 @@ for(i in seq_len(nrow(hyper_grid))) {
 }
 
 # assess top 10 models
-hyper_grid %>%
+hyper_grid_tab <- hyper_grid %>%
   arrange(rmse) %>%
   mutate(perc_gain = (default_rmse - rmse) / default_rmse * 100) %>%
   head(10)
 
-hyper_grid_table <- xtable(hyper_grid, caption = "Hyperparameter Tuning Results")
+hyper_grid_table <- xtable(hyper_grid_tab, caption = "Hyperparameter Tuning Results")
 hyper_grid_table
 ```
 
@@ -448,8 +448,6 @@ In order for the model to work on my testing data set, I had to restrict it to o
 
 ```{r}
 predictions_rf2 <- predict(rf2, data = pool_RWC_23)$predictions
-
-print(predictions_rf2)
 ```
 
 The results of the pools matches show the following outcomes (values were rounded to whole numbers):
@@ -595,9 +593,9 @@ rf_permutation <- ranger(
 )
 
 p1 <- vip::vip(rf_impurity, num_features = 25, bar = FALSE) +
-  gg_title("Impurity")
+  ggtitle("Impurity")
 p2 <- vip::vip(rf_permutation, num_features = 25, bar = FALSE) +
-  gg_title("Permutation")
+  ggtitle("Permutation")
 
 gridExtra::grid.arrange(p1, p2, nrow = 1)
 ```
@@ -607,15 +605,23 @@ My results show that for both impurity and permutation, the away team feature wa
 In order to test this I changed all the neutral values in France's games to see if the results would differ without France as the hosts. 
 
 ```{r}
-F_RWC_23_nue <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures_F_nue.xlsx")
+F_RWC_23_neu <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\data\\RWC_2023_fixtures_F_neu.xlsx")
 
-F_RWC_23_nue <- process_RWC_data(F_RWC_23_nue)
+F_RWC_23_neu <- process_RWC_data(F_RWC_23_neu)
 ```
 
-```{r}
-predictions_rf2_F_nue <- predict(rf2, data = F_RWC_23_nue)$predictions
-predictions_rf2_F_nue
+```{r results='asis'}
+predictions_rf2_F_neu <- predict(rf2, data = F_RWC_23_neu)$predictions
+
+F_RWC_23__neu_tab <- F_RWC_23_neu %>%
+  mutate(stage = c(rep("Pools", 8), rep("QF", 4), rep("SF", 2), "F")) %>%
+  select(stage, home_team, away_team, points_diff) %>% 
+  filter(home_team == "France")
+
+F_RWC_23__neu_table <- xtable(F_RWC_23_tab, title = "2023 RWC France Matches Predictions at Neutral Ground")
 ```
+
+When treating the matches played by France as neutral, I saw that the results are still the same as was found in the original model. In some of the games France win by a slightly lower margin, however they win in every game. This shows that France being the host country does not have a significant effect on them being predicted as winners. Therefore based on the data it is pretty clear that France are the favourites to win the 2023 Rugby World Cup and would have been regardless of if they were hosting the tournament.
 
 # Conclusion
 So as can be seen, using a random forest machine learning model, I was able to predict that France will win the 2023 Rugby World Cup. Using past rugby world cup match results, the rankings of teams and their number of title wins my model was able to learn from my training set and predict the points difference for every match of the tournament. The final result suggested that France will beat South Africa by 4 points. However it should be noted that World Cups are a difficult thing to predict accurately. No body would have predicted South Africa to win the World Cup in 2019 and I am almost certain the data certainly would not have suggested they would. So maybe another team could surprise us, however if you were wnting to put money on a team to win the World Cup, the data would suggest that France is you best bet.
