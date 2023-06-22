@@ -2,8 +2,23 @@
 title: "2023 Rugby World Predictor"
 author: "Peter Meihuizen"
 date: "2023-06-23"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	fig.align = 'center',
+	fig.height = 5,
+	fig.width = 6,
+	fig.pos = "center"
+)
+```
+
+
 Introduction:
 
 For this project I will attempt to predict the winner of the 2023 Rugby World Cup using historical data of every international rugby match played by between the the historically best 10 international men's rugby teams in the world. The fixtures for the 2023 World Cup has already been released, with it consisting of group stages and knockout matches. Using the past match results from previous years, I will predict who will win every world cup game between the top 10 teams in the world, including the Rugby World Cup Final.
@@ -12,15 +27,27 @@ In order to conduct my analysis, I need to import the data set from excel format
 
 ```{r}
 library(readxl)
+library(tidyverse)
+library(tidyr)
+library(rvest)
+library(lubridate)
+library(ranger)
 df <- read_excel("C:\\Users\\Peter Meihuizen\\Desktop\\Masters\\1st Semester\\Data Science\\World Cup Project\\Data\\Rugby_matches_data_1984-2023.xlsx")
+
+source("code/subtract.R")
+source("code/win_percentage.R")
+source("code/combine_rows.R")
+source("code/win_loss_bar.R")
+source("code/generate_rankings.R")
+source("code/plot_rankings.R")
+source("code/WC_games.R")
+source("code/win_percent_process.R")
+source("code/process_RWC_data.R")
 ```
 
 I am going to do is generate 4 new columns, in order to identify the winner of each game, the points difference of each game and the winner of the World Cup. First I create a function to generate the points difference between the home_team and away_team.
 
 ```{r}
-# Points difference
-library(tidyverse)
-
 df <- df %>% 
   mutate(points_diff = subtract(., "home_score", "away_score"))
 ```
@@ -39,7 +66,6 @@ Then a variable which indicates the winner of the World Cup
 ```{r}
 # Winner of the World Cup
 # Create a new column WC_winner
-
 df <- df %>%
   mutate(WC_winner = NA) %>%
   {
@@ -72,8 +98,6 @@ WC_Winners
 Ok now I want to see what the win-loss percentage was for every world cup winning team in the 4 years leading up to their respective world cup victory. In order to do this I will look at the number of wins over the combined number of wins and losses over each 4 year period preceding the beginning of the world cup. First I'm going to create a 2 columns which indicate the year of each match as well as the world cup cycle of each non_world cup falls under.
 
 ```{r}
-library(lubridate)
-
 df <- df %>%
   mutate(year = year(date))
 
@@ -100,8 +124,6 @@ There is a bit of an issue in that some games were played after certain world cu
 Ok now I want to calculate the win percentage for each world cup winning team in their respective world cup cycle. Lets first indicate the world cup winner for each world cup cycle vaue so that we can group it by world cup winner and world cup cycle.
 
 ```{r}
-library(tidyr)
-
 df <- df %>%
   mutate(WC_winner = ifelse(is.na(WC_winner), lag(WC_winner), WC_winner)) %>%
   fill(WC_winner, .direction = "up")
@@ -146,7 +168,6 @@ Next I want to include the World rankings of each team which have been collected
 
 ```{r}
 #Scraping the data
-library(rvest)
 url <- "https://commons.wikimedia.org/wiki/Data:Men%27s_World_Rugby_rankings.tab"
 page <- read_html(url)
 table_data <- page %>% html_table(fill = TRUE)
@@ -180,7 +201,6 @@ south <- rankings %>%
 
 north <- rankings %>%
   select(-South_Africa, -New_Zealand, -Australia, -Argentina)
-
 ```
 
 
@@ -204,9 +224,7 @@ rankings_23 <- plot_rankings(WC_cycle_23)
 rankings_23
 ```
 
-So as cna be seen, in this world cup cycle South Africa have be the top team for most of the time, however Ireland has held the number 1 rank for the last year. 
-
-The rankings stand as such as of the 12 of June 2023.
+So as can be seen, in this world cup cycle South Africa have be the top team for most of the time, however Ireland has held the number 1 rank for the last year. The rankings stand as such as of the 12 of June 2023.
 
 ```{r}
 June_12_rankings <- WC_cycle_23 %>%
@@ -240,19 +258,19 @@ WC_matches <- WC_matches %>%
 Ok so there have been 132 matches played between these teams at World Cups. As an input to my model I need to calculate the win percentage of each team against these other teams in the 4 year cycle preceding this particular world cup.
 
 ```{r}
-win_percent_df <- bind_rows(
-  win_percentages_SA %>% mutate(team = "South Africa"),
-  win_percentages_NZ %>% mutate(team = "New Zealand"),
-  win_percentages_AUS %>% mutate(team = "Australia"),
-  win_percentages_ARG %>% mutate(team = "Argentina"),
-  win_percentages_IRE %>% mutate(team = "Ireland"),
-  win_percentages_ITA %>% mutate(team = "Italy"),
-  win_percentages_FRA %>% mutate(team = "France"),
-  win_percentages_SCO %>% mutate(team = "Scotland"),
-  win_percentages_ENG %>% mutate(team = "England"),
-  win_percentages_WAL %>% mutate(team = "Wales")
-)
+win_percent_df <- win_percent_process(df)
+
+top_10_teams <- win_percent_df %>%
+  filter(total_matches >= 10, !is.na(WC_cycle)) %>%
+  arrange(desc(win_percentage), WC_cycle, team, total_wins, total_matches) %>%
+  slice_head(n = 10) %>%
+  select(WC_cycle, team, total_wins, total_matches, win_percentage)
+
+top_10_teams <- as_tibble(top_10_teams)
+top_10_teams
 ```
+
+The top 10 teams table shows the win percentages of teams from each world cup cycle to show who was the best performing teams from all combined world cup cycles. As can be seen New Zealand take up 5 of the top 6 spots in the highlighting their dominance outside of world cups. The 2015 World Cup winning team takes the top spot with a win percentage of 88.6% against all the top teams in the world, thereby making a strong case for being classified as the greatest rugby team in history. Interesting to note is that two teams from the 2023 world cup cycle are included in the top 10, France in 7th place with a win percentage of 77.4% and Ireland with a win percentage of 76.7%. This shows the good form both of these teams have had leading up to the 2023 Rugby World Cup.
 
 Ok now I need to import the winning percentages into the WC_matches data set so that I can show the win percentages of each team as an input into each game they played.
 
@@ -263,9 +281,6 @@ WC_matches <- left_join(WC_matches, win_percent_df, by = c("year" = "WC_cycle", 
   left_join(win_percent_df, by = c("year" = "WC_cycle", "away_team" = "team")) %>%
   mutate(AT_win_percent = win_percentage) %>%
   select(-win_percentage)
-
-
-  
 ```
 
 So now we've edited the WC_matches data set which shows the win percentages for each game, I want to include the rankings of each team from before each world cup began for the last 4 world cups, seeing as these are the only world cups where the rankings existed.
@@ -390,8 +405,6 @@ pool_RWC_23 <- process_RWC_data(RWC_23) %>%
 Now both the training and testing data sets have been set up meaning I can perform a random forest to determine who is going to win the world cup.
 
 ```{r}
-library("ranger")
-
 rf1 <- ranger(
   points_diff ~ ., 
   data = WC_matches,

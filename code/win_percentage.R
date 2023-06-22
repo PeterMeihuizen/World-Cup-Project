@@ -1,5 +1,5 @@
-win_percentage <- function(data){
-  data %>%
+win_percentage <- function(x){
+ g <- x %>%
     group_by(WC_winner, WC_cycle) %>%
     summarize(
       total_matches = sum(home_team == WC_winner | away_team == WC_winner),
@@ -8,6 +8,6 @@ win_percentage <- function(data){
     mutate(
       win_percentage = ifelse(!is.na(WC_winner), total_wins / total_matches * 100, NA)
     )
-  
+  g
 }
   
